@@ -1,97 +1,144 @@
--- If you're not sure your plugin is executing, uncomment the line below and restart Kong
--- then it will throw an error which indicates the plugin is being loaded at least.
+local url = require "socket.url"
 
--- assert(ngx.get_phase() == "timer", "The world is coming to an end!")
+local responses = require "kong.tools.responses"
+local dump = require 'serial'
 
+local utils = require "kong.plugins.header-based-upstream.utils"
+local singletons = require "kong.singletons"
 
--- load the base plugin object and create a subclass
 local plugin = require("kong.plugins.base_plugin"):extend()
 
+-- Aliases
 local ngx_get_headers = ngx.req.get_headers
+
+
+-- Local functions
+local function load_mappings(api_id)
+
+  local dao = singletons.dao
+
+  ngx.log(ngx.DEBUG, dump.tostring(type(api_id)))
+  ngx.log(ngx.DEBUG, dump.tostring(api_id))
+
+  local mappings, err = dao.header_based_upstream_urls:find_all {
+    api_id = api_id
+  }
+  if not mappings then
+    return nil, err
+  end
+  return mappings
+end
+
+-- Function verifies all mappings ( headers to URL ) against header values provided in request
+--  - All headers from configuration ( mapping ) must match headers in request
+--  - Header values comparison is case-insensitive
+local function find_matching_mappings(mappings, requestHeaders)
+
+  local matching = {}
+  local i = 0;
+
+  -- Iterate over all mappings
+  for j,mapping in pairs(mappings) do
+    
+    ngx.log(ngx.DEBUG, "Veryfing mapping '" .. mapping.id .. "'...")
+
+    local isMatch = true
+
+    -- Iterate over all header predicates defined for mapping against header values provided in requuest
+    for k,header in pairs(mapping.headers) do
+      
+      -- Extract header name and value
+      local epxectedHeaderName, expectedHeaderValue = header:match("^([^:]+):*(.-)$")
+
+      ngx.log(ngx.DEBUG, "  Expected header name: " .. epxectedHeaderName)
+      ngx.log(ngx.DEBUG, "    Expected header value: " .. expectedHeaderValue)
+      
+      if requestHeaders[epxectedHeaderName] ~= nil then
+
+        ngx.log(ngx.DEBUG, "    Actual header value: " .. requestHeaders[epxectedHeaderName] )
+        
+        if requestHeaders[epxectedHeaderName]:upper() ~= expectedHeaderValue:upper() then
+          isMatch = false
+          break
+        end
+      else 
+        isMatch = false
+        break
+      end
+    end
+
+    ngx.log(ngx.DEBUG, "Veryfing mapping '" .. mapping.id .. "'. Is matched: " .. tostring(isMatch))
+
+    -- In match add to return set
+    if isMatch then
+      i = i+1
+      matching[i] = mapping
+    end
+  end
+
+  return matching
+end
 
 -- constructor
 function plugin:new()
-  plugin.super.new(self, "header-based-upstream")  --TODO: change "myPlugin" to the name of the plugin here
+  plugin.super.new(self, "header-based-upstream")
   
   -- do initialization here, runs in the 'init_by_lua_block', before worker processes are forked
 
 end
 
----------------------------------------------------------------------------------------------
--- In the code below, just remove the opening brackets; `[[` to enable a specific handler
---
--- The handlers are based on the OpenResty handlers, see the OpenResty docs for details
--- on when exactly they are invoked and what limitations each handler has.
---
--- The call to `.super.xxx(self)` is a call to the base_plugin, which does nothing, except logging
--- that the specific handler was executed.
----------------------------------------------------------------------------------------------
-
-
-
---[[ handles more initialization, but AFTER the worker process has been forked/created.
--- It runs in the 'init_worker_by_lua_block'
-function plugin:init_worker()
-  plugin.super.access(self)
-  -- your custom code here
-  
-end --]]
-
---[[ runs in the ssl_certificate_by_lua_block handler
-function plugin:certificate(plugin_conf)
-  plugin.super.access(self)
-  -- your custom code here
-  
-end --]]
-
---[[ runs in the 'rewrite_by_lua_block' (from version 0.10.2+)
--- IMPORTANT: during the `rewrite` phase neither the `api` nor the `consumer` will have
--- been identified, hence this handler will only be executed if the plugin is 
--- configured as a global plugin!
-function plugin:rewrite(plugin_conf)
-  plugin.super.rewrite(self)
-  -- your custom code here
-  
-end --]]
-
----[[ runs in the 'access_by_lua_block'
 function plugin:access(plugin_conf)
   plugin.super.access(self)
 
-  ngx.log(ngx.ERR, "[header-based-upstream] Access")
+  -- Retrieve API ID from request context
+  local api_id = ngx.ctx.api.id
 
-  ngx.req.set_header("Hello-World", "this is on a request")
-  
-end --]]
+  -- Aliases
+  local dao = singletons.dao
+  local cache = singletons.cache
 
----[[ runs in the 'header_filter_by_lua_block'
-function plugin:header_filter(plugin_conf)
-  plugin.super.access(self)
+  -- Retrieve mappings ( from cache or database )
+  local mappings_cache_key = dao.header_based_upstream_urls:cache_key(api_id)
+  local mappings, err = cache:get(mappings_cache_key, nil, load_mappings, api_id)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
 
-  -- your custom code here, for example;
-  ngx.header["Bye-World"] = "this is on the response"
+  -- Match mapping by sent headers
+  local matching_mappings = find_matching_mappings( mappings, ngx.req.get_headers() )
+  local matching_mappings_count = utils.table_length( matching_mappings )
+
+  ngx.log( ngx.DEBUG, "Number of matching mappings found:" .. matching_mappings_count)
+  if matching_mappings_count == 1 then
 
     
+    local parsed = url.parse(matching_mappings[1].upstream_url)
 
-end --]]
+    ngx.log( ngx.DEBUG, dump.tostring(ngx.ctx))
+    ngx.log( ngx.DEBUG, dump.tostring(parsed))
+    
 
---[[ runs in the 'body_filter_by_lua_block'
-function plugin:body_filter(plugin_conf)
-  plugin.super.access(self)
-  -- your custom code here
-  
-end --]]
+    -- Update upstream
+    ngx.ctx.api.upstream_url = matching_mappings[1].upstream_url
+    ngx.ctx.balancer_address.host = parsed.host
+    ngx.ctx.balancer_address.port = parsed.port
+    ngx.var.upstream_uri = string.gsub( ngx.var.uri, ngx.ctx.router_matches.uri, parsed.path )    
 
---[[ runs in the 'log_by_lua_block'
-function plugin:log(plugin_conf)
-  plugin.super.access(self)
-  -- your custom code here
-  
-end --]]
+  elseif matching_mappings_count == 0 then
 
+    -- No matching entry found
+    local msg = "No matching entry found"
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  else 
+    
+    -- Multiple matchching mapping found
+    local msg = "Multiple matching entries found"
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(msg)
+  end  
+end
 
 -- set the plugin priority, which determines plugin execution order
-plugin.PRIORITY = 1000
+plugin.PRIORITY = 10
 
 -- return our plugin object
 return plugin
