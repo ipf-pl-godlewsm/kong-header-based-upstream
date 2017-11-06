@@ -8,12 +8,12 @@ local SCHEMA = {
     id = {type = "id", dao_insert_value = true},
     created_at = {type = "timestamp", immutable = true, dao_insert_value = true},
     api_id = {type = "id", required = true, foreign = "apis:id"},
-    name = {type = "string", required = true },
     headers = {
       type = "array", 
       required = true, 
       default = {}
     },    
+    name = {type = "string", required = true },
     upstream_url = {type = "string", required = true }
   },
 }

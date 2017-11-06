@@ -31,6 +31,15 @@ function _M.difference(a, b)
     return ret
 end
 
+function _M.table_contains(table, element)
+    for _, value in pairs(table) do
+      if value == element then
+        return true
+      end
+    end
+    return false
+  end
+
 function _M.table_length(T)
     local count = 0
     for _ in pairs(T) do count = count + 1 end

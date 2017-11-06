@@ -1,0 +1,58 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "taskName": "Build and install plugin",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "type": "shell",
+            "command": "./scripts/build.sh",
+            "problemMatcher": []
+        },
+        {
+            "taskName": "Test API - GET (list)",
+            "group": "test",
+            "type": "shell",
+            "command": "./scripts/api_get_list.sh",
+            "problemMatcher": []
+        },
+        {
+            "taskName": "Test API - GET (single)",
+            "group": "test",
+            "type": "shell",
+            "command": "./scripts/api_get_single.sh",
+            "problemMatcher": []
+        },
+        {
+            "taskName": "Test API - POST",
+            "group": "test",
+            "type": "shell",
+            "command": "./scripts/api_post.sh",
+            "problemMatcher": []
+        },
+        {
+            "taskName": "Test API - PUT",
+            "group": "test",
+            "type": "shell",
+            "command": "./scripts/api_put.sh",
+            "problemMatcher": []
+        },
+        {
+            "taskName": "Test API - PATCH",
+            "group": "test",
+            "type": "shell",
+            "command": "./scripts/api_patch.sh",
+            "problemMatcher": []
+        },
+        {
+            "taskName": "Display logs",
+            "group": "test",
+            "type": "shell",
+            "command": "./scripts/display_logs.sh",
+            "problemMatcher": []
+        }
+
+    ]
+}
