@@ -2,11 +2,11 @@ return {
   {
     name = "2017-10-12-_init_header-based-upstream",
     up =  [[
-      CREATE TABLE IF NOT EXISTS header_based_upstream_urls (
+      CREATE TABLE IF NOT EXISTS header_based_upstream_urls(
         id uuid,
         api_id uuid,
+        headers text,
         name text,
-        headers json,
         upstream_url text,
         created_at timestamp,
         PRIMARY KEY (id)

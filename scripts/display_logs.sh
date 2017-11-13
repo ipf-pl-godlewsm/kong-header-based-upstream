@@ -1,1 +1,1 @@
-cat /usr/local/Cellar/kong/0.11.0/logs/error.log
+tail -n 30 /usr/local/Cellar/kong/0.11.0/logs/error.log

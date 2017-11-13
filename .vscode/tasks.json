@@ -52,6 +52,13 @@
             "type": "shell",
             "command": "./scripts/display_logs.sh",
             "problemMatcher": []
+        },
+        {
+            "taskName": "Query service",
+            "group": "test",
+            "type": "shell",
+            "command": "./scripts/service_query.sh",
+            "problemMatcher": []
         }
 
     ]

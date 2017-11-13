@@ -20,7 +20,7 @@ end
 return {
   no_consumer = true,
   fields = {
-    header_names = { type = "array", default = {}, immutable = true, func = validation_header_names }
+    header_names = { type = "array", required = false, default = {}, immutable = true, func = validation_header_names }
   },
   self_check = function(schema, plugin_t, dao, is_updating)
     return true

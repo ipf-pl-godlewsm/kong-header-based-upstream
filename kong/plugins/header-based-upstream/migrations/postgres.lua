@@ -5,8 +5,8 @@ return {
         CREATE TABLE IF NOT EXISTS header_based_upstream_urls(
             id uuid,
             api_id uuid REFERENCES apis (id) ON DELETE CASCADE,
-            name text,
             headers json,
+            name text,
             upstream_url text,
             created_at timestamp without time zone default (CURRENT_TIMESTAMP(0) at time zone 'utc'),
             PRIMARY KEY (id)  
