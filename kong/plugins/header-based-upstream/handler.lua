@@ -114,11 +114,16 @@ function plugin:access(plugin_conf)
     
     local parsed = url.parse(matching_mappings[1].upstream_url)    
 
-    -- ngx.log(ngx.DEBUG, "Before:" )
-    -- ngx.log(ngx.DEBUG, "ngx.var.scheme: " .. dump.tostring(ngx.var.scheme) )
-    -- ngx.log(ngx.DEBUG, "ngx.var.request_uri: " .. dump.tostring(ngx.var.request_uri) )
-    -- ngx.log(ngx.DEBUG, "ngx.ctx: " .. dump.tostring(ngx.ctx) )
-    -- ngx.log(ngx.DEBUG, "ngx.var.uri: " .. dump.tostring(ngx.var.uri) )
+	if parsed.port == nil then
+		parsed.port = 80
+	end
+	
+    ngx.log(ngx.DEBUG, "Before:" )
+    ngx.log(ngx.DEBUG, "ngx.var.scheme: " .. dump.tostring(ngx.var.scheme) )
+    ngx.log(ngx.DEBUG, "ngx.var.request_uri: " .. dump.tostring(ngx.var.request_uri) )
+    ngx.log(ngx.DEBUG, "ngx.ctx: " .. dump.tostring(ngx.ctx) )
+    ngx.log(ngx.DEBUG, "ngx.var.uri: " .. dump.tostring(ngx.var.uri) )
+	ngx.log(ngx.DEBUG, "Parsed url: " .. dump.tostring(parsed) )
     
     -- Update upstream
     ngx.ctx.api.upstream_url = matching_mappings[1].upstream_url
@@ -128,9 +133,9 @@ function plugin:access(plugin_conf)
     ngx.var.upstream_uri = string.gsub( ngx.var.uri, ngx.ctx.router_matches.uri, parsed.path )    
     ngx.var.upstream_host = parsed.host
 
-    -- ngx.log(ngx.DEBUG, "After:" )
-    -- ngx.log(ngx.DEBUG, dump.tostring(ngx.var.scheme) )
-    -- ngx.log(ngx.DEBUG, dump.tostring(ngx.ctx) )
+    ngx.log(ngx.DEBUG, "After:" )
+    ngx.log(ngx.DEBUG, dump.tostring(ngx.var.scheme) )
+    ngx.log(ngx.DEBUG, dump.tostring(ngx.ctx) )
 
   elseif matching_mappings_count == 0 then
 
