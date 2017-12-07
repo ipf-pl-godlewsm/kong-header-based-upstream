@@ -1,4 +1,5 @@
 local dump = require 'serial'
+local validator = require "kong.plugins.header-based-upstream.validator"
 
 function tablelength(T)
   local count = 0
@@ -6,21 +7,15 @@ function tablelength(T)
   return count
 end
 
-local function validation_header_names(given_value, given_config)
+local function validate_mappings(given_value, given_config)
   
-  ngx.log(ngx.ERR, dump.tostring(given_value))
-
-  if ( given_value == nil or tablelength(given_value) == 0 ) then
-    return false, "Incorrect configuration - At least one header name must be provided in 'header_names' configuration array"
-  end
-  
-  return true
+  return validator.validate_mappings(given_value, given_config)
 end
 
 return {
   no_consumer = true,
   fields = {
-    header_names = { type = "array", required = false, default = {}, immutable = true, func = validation_header_names }
+    mappings = { type = "array", required = true, func = validate_mappings }
   },
   self_check = function(schema, plugin_t, dao, is_updating)
     return true
